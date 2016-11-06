@@ -6,8 +6,11 @@ import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.security.Key;
 import java.security.KeyPair;
 import java.util.Observable;
 import java.util.Observer;
@@ -20,6 +23,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
@@ -30,7 +34,9 @@ import com.jgoodies.forms.layout.RowSpec;
 
 import algorithm.RSA;
 import core.Processor;
+import exception.ExceptionInfo;
 import structure.ProgressInfo;
+import utils.Utils;
 
 public class MainFrame extends JFrame implements Observer {
 
@@ -49,6 +55,10 @@ public class MainFrame extends JFrame implements Observer {
 
 	private JProgressBar	  pbProcessInfo;
 	private JLabel			  lblTimeLeftInfo;
+
+	private JTextField		  txtInputFileSign;
+	private JTextField		  txtSignFile;
+	private JTextField		  txtKeyFileSign;
 
 	private Processor		  processor;
 	private boolean			  isRunning;
@@ -86,7 +96,7 @@ public class MainFrame extends JFrame implements Observer {
 		setResizable(false);
 		setTitle("RSA File Cryptor");
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 500, 350);
+		setBounds(100, 100, 520, 500);
 
 		mainPane = new JPanel();
 		mainPane.setFont(new Font("Tahoma", Font.PLAIN, 14));
@@ -97,7 +107,9 @@ public class MainFrame extends JFrame implements Observer {
 						FormSpecs.RELATED_GAP_COLSPEC, },
 				new RowSpec[] { FormSpecs.RELATED_GAP_ROWSPEC, RowSpec.decode("default:grow"),
 						FormSpecs.PARAGRAPH_GAP_ROWSPEC, RowSpec.decode("default:grow"),
-						FormSpecs.PARAGRAPH_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC, FormSpecs.RELATED_GAP_ROWSPEC, }));
+						FormSpecs.PARAGRAPH_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC, FormSpecs.PARAGRAPH_GAP_ROWSPEC,
+						FormSpecs.DEFAULT_ROWSPEC, FormSpecs.RELATED_GAP_ROWSPEC, RowSpec.decode("default:grow"),
+						FormSpecs.RELATED_GAP_ROWSPEC, }));
 
 		JPanel keyPane = new JPanel();
 		mainPane.add(keyPane, "2, 2, fill, fill");
@@ -269,6 +281,106 @@ public class MainFrame extends JFrame implements Observer {
 		pbProcessInfo.setFont(new Font("Tahoma", Font.PLAIN, 14));
 		infoPane.add(pbProcessInfo, "1, 3, 3, 1");
 
+		final JLabel lblNewLabel = new JLabel("Digital signature");
+		lblNewLabel.setFont(new Font("Tahoma", Font.BOLD, 16));
+		lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		this.mainPane.add(lblNewLabel, "2, 8");
+
+		final JPanel signPane = new JPanel();
+		this.mainPane.add(signPane, "2, 10, fill, fill");
+		signPane.setLayout(new FormLayout(
+				new ColumnSpec[] { FormSpecs.DEFAULT_COLSPEC, FormSpecs.RELATED_GAP_COLSPEC,
+						ColumnSpec.decode("default:grow"), FormSpecs.RELATED_GAP_COLSPEC,
+						ColumnSpec.decode("max(60dlu;pref)"), FormSpecs.RELATED_GAP_COLSPEC,
+						ColumnSpec.decode("max(35dlu;pref)"), FormSpecs.RELATED_GAP_COLSPEC,
+						FormSpecs.DEFAULT_COLSPEC, },
+				new RowSpec[] { FormSpecs.DEFAULT_ROWSPEC, FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC,
+						FormSpecs.RELATED_GAP_ROWSPEC, FormSpecs.DEFAULT_ROWSPEC, FormSpecs.RELATED_GAP_ROWSPEC,
+						RowSpec.decode("fill:default:grow"), }));
+
+		final JLabel lblInputFileSign = new JLabel("Input file");
+		lblInputFileSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		signPane.add(lblInputFileSign, "1, 1, right, default");
+
+		this.txtInputFileSign = new JTextField();
+		this.txtInputFileSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		this.txtInputFileSign.setEditable(false);
+		this.txtInputFileSign.setColumns(10);
+		signPane.add(this.txtInputFileSign, "3, 1, 5, 1, fill, default");
+
+		final JButton btnInputFileSign = new JButton("...");
+		btnInputFileSign.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent arg0) {
+				handleBtnInputFileSignActionPerformed(arg0);
+			}
+		});
+		btnInputFileSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		btnInputFileSign.setFocusable(false);
+		signPane.add(btnInputFileSign, "9, 1");
+
+		final JLabel lblSignatureFile = new JLabel("Signature file");
+		lblSignatureFile.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		signPane.add(lblSignatureFile, "1, 3, right, default");
+
+		this.txtSignFile = new JTextField();
+		this.txtSignFile.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		this.txtSignFile.setEditable(false);
+		this.txtSignFile.setColumns(10);
+		signPane.add(this.txtSignFile, "3, 3, 5, 1, fill, default");
+
+		final JButton btnSignFileSign = new JButton("...");
+		btnSignFileSign.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				handleBtnSignFileSignActionPerformed(e);
+			}
+		});
+		btnSignFileSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		btnSignFileSign.setFocusable(false);
+		signPane.add(btnSignFileSign, "9, 3");
+
+		final JLabel lblKeyFileSign = new JLabel("Key file");
+		lblKeyFileSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		signPane.add(lblKeyFileSign, "1, 5, right, default");
+
+		this.txtKeyFileSign = new JTextField();
+		this.txtKeyFileSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		this.txtKeyFileSign.setEditable(false);
+		this.txtKeyFileSign.setColumns(10);
+		signPane.add(this.txtKeyFileSign, "3, 5, 5, 1, fill, default");
+
+		final JButton btnKeyFileSign = new JButton("...");
+		btnKeyFileSign.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				handleBtnKeyFileSignActionPerformed(e);
+			}
+		});
+		btnKeyFileSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		btnKeyFileSign.setFocusable(false);
+		signPane.add(btnKeyFileSign, "9, 5");
+
+		final JButton btnSign = new JButton("Sign");
+		btnSign.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				handleBtnSignActionPerformed(e);
+			}
+		});
+		btnSign.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		signPane.add(btnSign, "5, 7");
+
+		final JButton btnVerify = new JButton("Verify");
+		btnVerify.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				handleBtnVerifyActionPerformed(e);
+			}
+		});
+		btnVerify.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		signPane.add(btnVerify, "7, 7, 3, 1");
+
 		// Initialize variables
 		initialize();
 	}
@@ -331,7 +443,7 @@ public class MainFrame extends JFrame implements Observer {
 
 	public void handleInputFileButton() {
 		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setDialogTitle("Open file");
+		fileChooser.setDialogTitle("Choose file");
 		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
 			File selectedFile = fileChooser.getSelectedFile();
 			txtInputFile.setText(selectedFile.toString());
@@ -360,10 +472,9 @@ public class MainFrame extends JFrame implements Observer {
 
 	public void handleKeyFileButton() {
 		JFileChooser fileChooser = new JFileChooser();
-		fileChooser.setDialogTitle("Open key file");
+		fileChooser.setDialogTitle("Choose key file");
 		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-			File selectedFile = fileChooser.getSelectedFile();
-			txtKeyFile.setText(selectedFile.toString());
+			txtKeyFile.setText(fileChooser.getSelectedFile().toString());
 		}
 	}
 
@@ -418,4 +529,98 @@ public class MainFrame extends JFrame implements Observer {
 		}
 	}
 
+	protected void handleBtnInputFileSignActionPerformed(ActionEvent arg0) {
+		JFileChooser fileChooser = new JFileChooser();
+		fileChooser.setDialogTitle("Choose file");
+		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+			String fileName = fileChooser.getSelectedFile().toString();
+			txtInputFileSign.setText(fileName);
+			txtSignFile.setText(fileName + ".sig");
+		}
+	}
+
+	protected void handleBtnSignFileSignActionPerformed(ActionEvent e) {
+		JFileChooser fileChooser = new JFileChooser();
+		fileChooser.setDialogTitle("Choose signature file");
+		fileChooser.setSelectedFile(new File(txtSignFile.getText()));
+		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+			txtSignFile.setText(fileChooser.getSelectedFile().toString());
+		}
+	}
+
+	protected void handleBtnKeyFileSignActionPerformed(ActionEvent e) {
+		JFileChooser fileChooser = new JFileChooser();
+		fileChooser.setDialogTitle("Choose key file");
+		if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+			txtKeyFileSign.setText(fileChooser.getSelectedFile().toString());
+		}
+	}
+
+	protected void handleBtnSignActionPerformed(ActionEvent e) {
+		if (txtInputFileSign.getText().isEmpty() || txtSignFile.getText().isEmpty()
+				|| txtKeyFileSign.getText().isEmpty()) {
+			JOptionPane.showMessageDialog(this, "Some required fields have not been entered!");
+		} else {
+			try {
+				String hash = Utils.hashSHA256File(new File(txtInputFileSign.getText()), rsa.getValidEncryptedBlockSize());
+				
+				Key key = null;
+				try (FileInputStream priFileIS = new FileInputStream(new File(txtKeyFileSign.getText()))) {
+					try (ObjectInputStream priOIS = new ObjectInputStream(priFileIS)) {
+						key = (Key) priOIS.readObject();		
+					}
+				} catch (Exception ex) {
+					throw new ExceptionInfo("Key is invalid!");
+				}
+				
+				try (FileOutputStream fileOutputStream = new FileOutputStream(new File(txtSignFile.getText()))) {
+					fileOutputStream.write(rsa.encrypt(hash.getBytes(), key));
+				}
+				
+				JOptionPane.showMessageDialog(this, "Done!");
+			} catch (Exception ex) {
+				ex.printStackTrace();
+				JOptionPane.showMessageDialog(this, ex.getMessage());
+			}
+		}
+	}
+
+	protected void handleBtnVerifyActionPerformed(ActionEvent e) {
+		if (txtInputFileSign.getText().isEmpty() || txtSignFile.getText().isEmpty()
+				|| txtKeyFileSign.getText().isEmpty()) {
+			JOptionPane.showMessageDialog(this, "Some required fields have not been entered!");
+		} else {
+			try {
+				String hash = Utils.hashSHA256File(new File(txtInputFileSign.getText()), rsa.getValidEncryptedBlockSize());
+				
+				Key key = null;
+				try (FileInputStream priFileIS = new FileInputStream(new File(txtKeyFileSign.getText()))) {
+					try (ObjectInputStream priOIS = new ObjectInputStream(priFileIS)) {
+						key = (Key) priOIS.readObject();		
+					}
+				} catch (Exception ex) {
+					throw new ExceptionInfo("Key is invalid!");
+				}
+				
+				String hashTemp = null;
+				File signFile = new File(txtSignFile.getText());
+				try (FileInputStream fileInputStream = new FileInputStream(signFile)) {
+					byte[] buffer = new byte[(int) Math.min(signFile.length(), rsa.getValidEncryptedBlockSize())];
+					if (fileInputStream.read(buffer) == buffer.length) {
+						byte[] decrypted = rsa.decrypt(buffer, key);
+						hashTemp = new String(decrypted);
+					}
+				}
+				
+				if (hash.contentEquals(hashTemp)) {
+					JOptionPane.showMessageDialog(this, "Match!");
+				} else {
+					JOptionPane.showMessageDialog(this, "Not match!");
+				}
+			} catch (Exception ex) {
+				ex.printStackTrace();
+				JOptionPane.showMessageDialog(this, ex.getMessage());
+			}
+		}
+	}
 }
